@@ -113,7 +113,8 @@ class TransformerEncoderLayer(nn.Module):
         super(TransformerEncoderLayer, self).__setstate__(state)
 
     def forward(
-        self, src: Tensor, src_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None
+        self, src: Tensor, src_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
+        is_causal: bool = False,
     ) -> Tensor:
         r"""Pass the input through the encoder layer.
 
@@ -177,6 +178,7 @@ class MultiheadAttention(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
         self.head_dim = embed_dim // num_heads
+        self.batch_first = False
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
 
         if self._qkv_same_embed_dim is False:
