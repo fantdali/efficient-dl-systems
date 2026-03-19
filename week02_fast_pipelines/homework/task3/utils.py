@@ -17,7 +17,7 @@ def seed_everything(seed: int = 595959) -> None:
 
 
 def get_device() -> torch.device:
-    return torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 class Settings:

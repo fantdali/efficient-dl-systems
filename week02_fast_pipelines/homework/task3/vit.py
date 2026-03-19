@@ -14,7 +14,7 @@ def pair(t):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim=255, dropout=0.0):
+    def __init__(self, dim, hidden_dim=256, dropout=0.0):
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -33,33 +33,33 @@ class Attention(nn.Module):
     def __init__(self, dim, heads=8, dim_head=64, dropout=0.0):
         super().__init__()
         inner_dim = dim_head * heads
-        project_out = not (heads == 1 and dim_head == dim)
 
         self.heads = heads
-        self.scale = dim_head ** (-0.5)
+        self.dim_head = dim_head
 
-        self.attend = nn.Softmax(dim=-1)
-        self.dropout = nn.Dropout(dropout)
         self.norm = nn.LayerNorm(dim)
-        self.queries = nn.Linear(dim, inner_dim, bias=False)
-        self.keys = nn.Linear(dim, inner_dim, bias=False)
-        self.values = nn.Linear(dim, inner_dim, bias=False)
+        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=True)
+        self.dropout = dropout
 
-        self.to_out = nn.Sequential(nn.Linear(inner_dim, dim), nn.Dropout(dropout)) if project_out else nn.Identity()
+        self.to_out = nn.Sequential(nn.Linear(inner_dim, dim), nn.Dropout(dropout))
 
     def forward(self, x):
-        q = self.queries(x)
-        k = self.keys(x)
-        v = self.values(x)
+        b, n, _ = x.shape
+        x = self.norm(x)
 
-        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+        q, k, v = self.to_qkv(x).view(b, n, 3, self.heads, self.dim_head).permute(2, 0, 3, 1, 4) 
+        
+        # (B, N, H, D) → (B, H, N, D)
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
+        
+        out = torch.nn.functional.scaled_dot_product_attention(q, k, v, dropout_p=self.dropout if self.training else 0.0)
 
-        attn = self.attend(dots)
-        attn = self.dropout(attn)
-
-        out = torch.matmul(attn, v)
+        out = out.transpose(1, 2).contiguous().view(b, n, -1)
 
         return self.to_out(out)
+
 
 
 class Transformer(nn.Module):
@@ -92,7 +92,7 @@ class ViT(nn.Module):
         num_classes,
         depth,
         heads,
-        dim=255,
+        dim=256,
         pool="cls",
         channels=3,
         dim_head=64,
