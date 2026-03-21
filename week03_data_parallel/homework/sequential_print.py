@@ -1,9 +1,10 @@
 import os
 
 import torch.distributed as dist
+import torch
 
 
-def run_sequential(rank, size, num_iter=10):
+def run_sequential(rank, size, num_iter=3):
     """
     Prints the process rank sequentially in two orders over `num_iter` iterations,
     separating the output for each iteration by `---`.
@@ -24,9 +25,32 @@ def run_sequential(rank, size, num_iter=10):
     Process 0
     ```
     """
+    
+    t = torch.zeros(1)
 
-    pass
-
+    for i in range(num_iter):
+        # asc
+        if rank == 0:
+            print(f"Process {rank}")
+            dist.send(t, dst=(rank + 1) % size)
+            dist.recv(t, src=(size - 1) % size)
+        else:
+            dist.recv(t, src=(rank - 1) % size)
+            print(f"Process {rank}")
+            dist.send(t, dst=(rank + 1) % size)
+        
+        # desc
+        if rank == size-1:
+            print(f"Process {rank}")
+            dist.send(t, dst=(rank - 1) % size)
+            dist.recv(t, src=0)
+        else:
+            dist.recv(t, src=(rank + 1) % size)
+            print(f"Process {rank}")
+            dist.send(t, dst=(rank - 1) % size)
+        
+        if rank == 0 and i < num_iter - 1:
+            print("---")
 
 if __name__ == "__main__":
     local_rank = int(os.environ["LOCAL_RANK"])
