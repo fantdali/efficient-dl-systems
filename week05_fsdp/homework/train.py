@@ -3,18 +3,15 @@ import logging
 import os
 import pathlib
 import pickle
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 import tyro
 from torch.distributed._functional_collectives import all_reduce
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
-from torch.distributed.fsdp import (
-    fully_shard as fsdp2_fully_shard,
-    MixedPrecisionPolicy,
-    FSDPModule as FSDP2Module,
-)
+from torch.distributed.fsdp import FSDPModule as FSDP2Module
+from torch.distributed.fsdp import MixedPrecisionPolicy
+from torch.distributed.fsdp import fully_shard as fsdp2_fully_shard
 from torchdata.stateful_dataloader import StatefulDataLoader
 from torchtitan.components.loss import cross_entropy_loss
 from torchtitan.components.tokenizer import HuggingFaceTokenizer
@@ -22,11 +19,9 @@ from torchtitan.hf_datasets.text_datasets import HuggingFaceTextDataset
 from torchtitan.models.llama3.model.args import TransformerModelArgs
 from torchtitan.models.llama3.model.model import Transformer
 
-from fsdp import (
-    fully_shard as effdl_fully_shard,
-    FSDPCommContext,
-    FSDPModule as EffdlFSDPModule,
-)
+from fsdp import FSDPCommContext
+from fsdp import FSDPModule as EffdlFSDPModule
+from fsdp import fully_shard as effdl_fully_shard
 
 logging.basicConfig(
     level=logging.INFO,
@@ -259,7 +254,7 @@ def train(
                 snapshots_dir / f"rank{torch.distributed.get_rank()}.pickle",
                 "wb",
             ) as output:
-                pickle.dump(torch.cuda.memory._snapshot(), output)
+                pickle.dump(torch.cuda.memory._snapshot(), output, protocol=4)
     return losses, grad_norms
 
 
